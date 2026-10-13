@@ -286,13 +286,13 @@ impl Dashboard {
 
     fn cards(&mut self, ui: &mut Ui) {
         ui.horizontal(|ui| {
-            ui.label(RichText::new("パーティション一覧").font(bold_font(22.0)).color(INK));
+            ui.label(RichText::new("パーティション一覧").font(bold_font(19.5)).color(INK));
             ui.add_space(7.0);
             egui::Frame::new().fill(Color32::from_rgb(251, 231, 213))
                 .corner_radius(30).inner_margin(egui::Margin::symmetric(12, 5))
-                .show(ui, |ui| { ui.label(RichText::new("C: – M:").size(13.5).color(BLUE)); });
+                .show(ui, |ui| { ui.label(RichText::new("C: – M:").size(12.0).color(BLUE)); });
             ui.with_layout(egui::Layout::right_to_left(Align::Center), |ui| {
-                ui.label(RichText::new("容量情報 30秒ごとに更新").size(11.5).color(MUTED));
+                ui.label(RichText::new("容量情報 30秒ごとに更新").size(10.5).color(MUTED));
             });
         });
         ui.add_space(11.0);
@@ -496,23 +496,27 @@ fn partition_tags(category: Option<&Category>) -> &'static [&'static str] {
 /// 説明文の改行とタグ折り返し数から必要なカード高さを算出する。
 /// 各行では最大高さを共通化するため、カードの下余白が大きくなりすぎない。
 fn card_height(ui: &Ui, part: &Partition, category: Option<&Category>, width: f32) -> f32 {
-    let text_w = (width - 149.0).max(20.0);
+    let text_w = (width - 154.0).max(20.0);
     let desc = partition_description(part, category);
-    let lines = wrap_lines(ui.painter(), desc, &FontId::proportional(15.5), MUTED, text_w, 5);
+    let lines = wrap_lines(ui.painter(), desc, &FontId::proportional(12.8), MUTED, text_w, 4);
     let tags = partition_tags(category);
     let mut rows = 1;
     let mut filled = 0.0_f32;
     for tag in tags.iter().take(5) {
-        let tw = ui.painter().layout_no_wrap((*tag).to_owned(), FontId::proportional(14.0), BLUE).size().x + 18.0;
+        let tw = ui.painter().layout_no_wrap((*tag).to_owned(), FontId::proportional(12.0), BLUE).size().x + 16.0;
         if filled > 0.0 && filled + tw > text_w {
             rows += 1;
             filled = 0.0;
         }
         filled += tw + 6.0;
     }
-    // 説明文とタグを実測して適切なカード高さを確保（下余白は15px）。
-    (198.0 + lines.len() as f32 * 23.0 + (rows - 1) as f32 * 29.0)
-        .max(255.0)
+    (140.0 + lines.len() as f32 * 18.0 + (rows - 1) as f32 * 22.0).max(205.0)
+}
+
+fn draw_shadow_text(p: &egui::Painter, pos: Pos2, anchor: Align2, text: impl Into<String>, font: FontId, color: Color32) {
+    let text = text.into();
+    p.text(pos + egui::vec2(1.0, 1.0), anchor, text.clone(), font.clone(), Color32::from_rgba_unmultiplied(255, 255, 255, 170));
+    p.text(pos, anchor, text, font, color);
 }
 
 /// 文字・タグの描画はカードの明示的な矩形内に収める。
@@ -522,17 +526,13 @@ fn draw_partition_card(ui: &mut Ui, part: &Partition, category: Option<&Category
     let hovered = response.hovered();
     let painter = ui.painter_at(rect);
     let inner = painter.with_clip_rect(rect);
-    let fill = if hovered { Color32::from_rgb(255, 246, 235) } else { Color32::from_rgb(255, 254, 252) };
+    let fill = if hovered { Color32::from_rgb(255, 247, 239) } else { Color32::from_rgb(255, 253, 250) };
     inner.rect_filled(rect, 20.0, fill);
     inner.rect_stroke(rect, 20.0,
-        Stroke::new(if hovered { 2.0_f32 } else { 1.0_f32 },
+        Stroke::new(if hovered { 1.8_f32 } else { 1.0_f32 },
             if hovered { Color32::from_rgb(205, 144, 121) } else { Color32::from_rgb(237, 220, 208) }),
         StrokeKind::Inside);
-    if hovered {
-        inner.rect_filled(Rect::from_min_size(rect.min + egui::vec2(8.0, 16.0), egui::vec2(4.0, height - 32.0)), 3.0, BLUE);
-    }
 
-    // 旧アイコン60px → 96px (= 1.6倍)。カード全体の縦中央に置く。
     let icon_center = egui::pos2(rect.left() + 66.0, rect.center().y);
     inner.circle_filled(icon_center, 52.0, Color32::from_rgb(255, 241, 231));
     if let Some(texture) = texture {
@@ -543,98 +543,85 @@ fn draw_partition_card(ui: &mut Ui, part: &Partition, category: Option<&Category
     }
 
     let x = rect.left() + 132.0;
-    let right = rect.right() - 17.0;
+    let right = rect.right() - 8.0;
     let text_w = (right - x).max(0.0);
     let local = categories::is_local_badge(&part.label);
-    let title_font = bold_font(21.5);
+    let total_text = if !part.error && part.total > 0 { system::short_capacity(part.total) } else { "--".to_owned() };
+    let total_font = FontId::proportional(11.5);
+    let total_size = inner.layout_no_wrap(total_text.clone(), total_font.clone(), INK).size().x;
+    let title_font = bold_font(18.4);
     let title = format!("({}:) {}", part.letter, categories::display_name(&part.label));
-    let max_title_w = (text_w - if local { 72.0 } else { 0.0 }).max(10.0);
+    let badge_w = if local { 58.0 } else { 0.0 };
+    let max_title_w = (text_w - total_size - badge_w - 18.0).max(10.0);
     let short_title = fit_text(&inner, &title, &title_font, INK, max_title_w);
-    let title_rect = inner.text(egui::pos2(x, rect.top() + 32.0), Align2::LEFT_CENTER,
-        short_title, title_font, INK);
+    let title_rect = inner.text(egui::pos2(x, rect.top() + 28.0), Align2::LEFT_CENTER, short_title, title_font, INK);
     if local {
         let badge = Rect::from_min_size(
-            egui::pos2((title_rect.right() + 6.0).min(right - 66.0), rect.top() + 18.5),
-            egui::vec2(65.0, 27.0));
-        inner.rect_filled(badge, 13.5, Color32::from_rgb(220, 239, 224));
-        // 縦・横ともバッジの中心に配置。
-        inner.text(badge.center(), Align2::CENTER_CENTER, "Local", FontId::proportional(14.0), Color32::from_rgb(40, 110, 77));
+            egui::pos2((title_rect.right() + 6.0).min(right - total_size - 68.0), rect.top() + 16.0),
+            egui::vec2(54.0, 24.0));
+        inner.rect_filled(badge, 12.0, Color32::from_rgb(220, 239, 224));
+        inner.text(badge.center(), Align2::CENTER_CENTER, "Local", FontId::proportional(12.0), Color32::from_rgb(40, 110, 77));
     }
+    draw_shadow_text(&inner, egui::pos2(rect.right() - 8.0, rect.top() + 28.0), Align2::RIGHT_CENTER, total_text, total_font, INK);
 
     if part.error || part.total == 0 {
-        inner.text(egui::pos2(x, rect.top() + 85.0), Align2::LEFT_CENTER,
-            "容量を取得できません", FontId::proportional(15.0), MUTED);
+        inner.text(egui::pos2(x, rect.top() + 82.0), Align2::LEFT_CENTER,
+            "容量を取得できません", FontId::proportional(13.0), MUTED);
     } else {
         let fraction = part.fraction().clamp(0.0, 1.0);
-        let bar_color = if fraction >= 0.90 { Color32::from_rgb(151, 105, 163) }
-            else if fraction >= 0.75 { Color32::from_rgb(213, 95, 98) }
-            else if fraction > 0.50 { Color32::from_rgb(227, 170, 75) }
-            else { Color32::from_rgb(102, 164, 167) };
-        let total_w = 76.0;
-        let bar_w = (text_w - total_w - 8.0).max(20.0);
-        let bar = Rect::from_min_size(egui::pos2(x, rect.top() + 72.0), egui::vec2(bar_w, 34.0));
-        inner.rect_filled(bar, 12.0, Color32::from_rgb(244, 237, 229));
+        let bar_color = if fraction >= 0.90 { Color32::from_rgb(190, 150, 198) }
+            else if fraction >= 0.75 { Color32::from_rgb(224, 149, 151) }
+            else if fraction > 0.50 { Color32::from_rgb(233, 191, 120) }
+            else { Color32::from_rgb(149, 197, 199) };
+        let bar = Rect::from_min_size(egui::pos2(x, rect.top() + 58.0), egui::vec2(text_w, 28.0));
+        inner.rect_filled(bar, 14.0, Color32::from_rgb(243, 237, 230));
         if fraction > 0.0 {
-            let used_w = (bar.width() * fraction).max(3.0).min(bar.width());
-            inner.rect_filled(Rect::from_min_size(bar.min, egui::vec2(used_w, bar.height())), 12.0, bar_color);
+            let used_w = (bar.width() * fraction).clamp(8.0, bar.width());
+            let fill_rect = Rect::from_min_max(bar.min, egui::pos2(bar.left() + used_w, bar.bottom()));
+            let clipped = inner.with_clip_rect(bar);
+            clipped.rect_filled(fill_rect, 14.0, bar_color);
         }
-        // プログレスバー内の可読性改善: 文字の下に半透明アイボリー背景を置く。
-        // 充填率が変わっても文字と背景の明度差を確保する。
-        let text_font = FontId::proportional(13.5);
-        let used_text = system::short_capacity(part.used());
-        let free_text = system::short_capacity(part.free);
-        let used_size = inner.layout_no_wrap(used_text.clone(), text_font.clone(), INK).size().x;
-        let free_size = inner.layout_no_wrap(free_text.clone(), text_font.clone(), INK).size().x;
-        let pill_y = bar.center().y;
-        let pill_h = 24.0;
-        let left_pill = Rect::from_center_size(
-            egui::pos2(bar.left() + 7.0 + (used_size + 12.0) * 0.5, pill_y),
-            egui::vec2((used_size + 12.0).min(bar.width() * 0.49), pill_h));
-        let right_pill = Rect::from_center_size(
-            egui::pos2(bar.right() - 7.0 - (free_size + 12.0) * 0.5, pill_y),
-            egui::vec2((free_size + 12.0).min(bar.width() * 0.49), pill_h));
-        inner.rect_filled(left_pill, 8.0, Color32::from_rgba_unmultiplied(255, 250, 244, 224));
-        inner.rect_filled(right_pill, 8.0, Color32::from_rgba_unmultiplied(255, 250, 244, 224));
-        inner.text(left_pill.center(), Align2::CENTER_CENTER, used_text, text_font.clone(), Color32::from_rgb(60, 47, 43));
-        inner.text(right_pill.center(), Align2::CENTER_CENTER, free_text, text_font, Color32::from_rgb(60, 47, 43));
-        inner.text(egui::pos2(right, bar.center().y), Align2::RIGHT_CENTER,
-            system::short_capacity(part.total), FontId::proportional(13.5), INK);
-        inner.text(egui::pos2(x, rect.top() + 123.0), Align2::LEFT_CENTER,
-            format!("{:.2}% Used", fraction * 100.0), FontId::proportional(14.0), MUTED);
+        let value_font = FontId::proportional(11.4);
+        draw_shadow_text(&inner, egui::pos2(bar.left() + 12.0, bar.center().y), Align2::LEFT_CENTER,
+            system::short_capacity(part.used()), value_font.clone(), Color32::from_rgb(72, 57, 53));
+        draw_shadow_text(&inner, egui::pos2(bar.right() - 12.0, bar.center().y), Align2::RIGHT_CENTER,
+            system::short_capacity(part.free), value_font.clone(), Color32::from_rgb(72, 57, 53));
+        inner.text(bar.center(), Align2::CENTER_CENTER,
+            format!("{:.2}%", fraction * 100.0), FontId::proportional(12.0), Color32::from_rgb(110, 95, 89));
     }
 
     let desc = partition_description(part, category);
-    // 明示改行(\n)と自動折返しの両方を扱う。3列でも読みやすい文字サイズ。
-    let desc_font = FontId::proportional(15.5);
-    let description_lines = wrap_lines(&inner, desc, &desc_font, MUTED, text_w, 5);
-    let desc_top = rect.top() + 151.0;
-    let desc_line_h = 23.0;
+    let desc_font = FontId::proportional(12.8);
+    let description_lines = wrap_lines(&inner, desc, &desc_font, MUTED, text_w, 4);
+    let desc_top = rect.top() + 112.0;
+    let desc_line_h = 18.0;
     for (line_index, line) in description_lines.iter().enumerate() {
         inner.text(egui::pos2(x, desc_top + line_index as f32 * desc_line_h),
             Align2::LEFT_CENTER, line, desc_font.clone(), MUTED);
     }
 
-    // タグの上下余白は圧縮し、中心揃えの文字を描画する。
     let tags = partition_tags(category);
     let mut tag_x = x;
-    let mut tag_y = desc_top + description_lines.len() as f32 * desc_line_h + 7.0;
-    let tag_font = FontId::proportional(14.0);
+    let mut tag_y = desc_top + description_lines.len() as f32 * desc_line_h + 5.0;
+    let tag_font = FontId::proportional(12.0);
     for tag in tags.iter().take(5) {
-        let tw = inner.layout_no_wrap((*tag).to_owned(), tag_font.clone(), BLUE).size().x + 18.0;
+        let tw = inner.layout_no_wrap((*tag).to_owned(), tag_font.clone(), BLUE).size().x + 16.0;
         if tag_x > x && tag_x + tw > right {
             tag_x = x;
-            tag_y += 29.0;
+            tag_y += 22.0;
         }
-        if tag_y + 25.0 > rect.bottom() - 11.0 { break; }
-        let pill = Rect::from_min_size(egui::pos2(tag_x, tag_y), egui::vec2(tw.min(text_w), 25.0));
-        inner.rect_filled(pill, 12.5, Color32::from_rgb(250, 234, 223));
+        if tag_y + 20.0 > rect.bottom() - 10.0 { break; }
+        let pill = Rect::from_min_size(egui::pos2(tag_x, tag_y), egui::vec2(tw.min(text_w), 20.0));
+        inner.rect_filled(pill, 10.0, Color32::from_rgb(250, 234, 223));
         inner.text(pill.center(), Align2::CENTER_CENTER, *tag, tag_font.clone(), BLUE);
         tag_x += tw + 6.0;
     }
 
-    // painter描画のため文字をドラッグ選択できず、カードの全面がクリック領域。
     let clicked = response.clicked();
-    response.on_hover_text(format!("ラベル: {}\nファイルシステム: {}\n{}\nシングルクリックでドライブを開く", part.label, part.fs, desc));
+    response.on_hover_text(format!("ラベル: {}
+ファイルシステム: {}
+{}
+シングルクリックでドライブを開く", part.label, part.fs, desc));
     clicked
 }
 
