@@ -1,6 +1,6 @@
 [package]
 name = "kiseki-storage"
-version = "1.0.0"
+version = "1.0.1"
 edition = "2021"
 authors = ["C2Sonnet"]
 description = "Kiseki Storage - Windows storage dashboard / キセキの倉庫"

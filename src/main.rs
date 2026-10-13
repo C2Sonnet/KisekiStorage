@@ -8,19 +8,19 @@ mod ui;
 
 fn main() -> eframe::Result<()> {
     let title = format!("キセキの倉庫 - Kiseki Storage (v{})", env!("CARGO_PKG_VERSION"));
-    // アップロードされた512.pngのアルファを保持し、ウィンドウアイコンに使用。
-    let source_icon = image::load_from_memory(include_bytes!("../assets/512.png"))
-        .expect("512.png の読み込みに失敗しました")
-        .to_rgba8();
-    let icon = image::imageops::resize(
-        &source_icon, 256, 256, image::imageops::FilterType::Lanczos3);
-    let (width, height) = icon.dimensions();
-    let icon_data = eframe::egui::IconData { rgba: icon.into_raw(), width, height };
-    let viewport = eframe::egui::ViewportBuilder::default()
+    // 埋め込み画像が万一破損しても、アイコンなしでUI起動を試みる。
+    let mut viewport = eframe::egui::ViewportBuilder::default()
         .with_title(title.clone())
-        .with_icon(icon_data)
         .with_inner_size([1400.0, 900.0])
-        .with_min_inner_size([900.0, 650.0]);
+        .with_min_inner_size([1160.0, 700.0]);
+    if let Ok(source) = image::load_from_memory(include_bytes!("../assets/512.png")) {
+        let icon = image::imageops::resize(
+            &source.to_rgba8(), 256, 256, image::imageops::FilterType::Lanczos3);
+        let (width, height) = icon.dimensions();
+        viewport = viewport.with_icon(eframe::egui::IconData {
+            rgba: icon.into_raw(), width, height,
+        });
+    }
     let options = eframe::NativeOptions { viewport, ..Default::default() };
     eframe::run_native(
         &title,

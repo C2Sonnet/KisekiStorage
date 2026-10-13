@@ -10,7 +10,7 @@
 
 **あなたのストレージを、ひと目で。**
 
-[![Version](https://img.shields.io/badge/Version-v1.0.0-DA947E)](#製品情報) [![Platform](https://img.shields.io/badge/Platform-Windows%2010%20%2F%2011-7D9B9A)](#ご利用環境) [![License](https://img.shields.io/badge/License-CC%20BY--NC--ND%204.0-BB8A72)](LICENSE)
+[![Version](https://img.shields.io/badge/Version-v1.0.1-DA947E)](#製品情報) [![Platform](https://img.shields.io/badge/Platform-Windows%2010%20%2F%2011-7D9B9A)](#ご利用環境) [![License](https://img.shields.io/badge/License-CC%20BY--NC--ND%204.0-BB8A72)](LICENSE)
 
 </div>
 
@@ -22,7 +22,7 @@
 |:--|:--|
 | **製品名** | Kiseki Storage |
 | **日本語名** | キセキの倉庫 |
-| **バージョン** | v1.0.0 |
+| **バージョン** | v1.0.1 |
 | **提供形態** | Windows向けデスクトップアプリケーション |
 | **デザイン／プロジェクト** | Chiaroscuro Sonnet（@C2Sonnet） |
 | **主な用途** | パソコン内のストレージを見渡し、目的のドライブへ素早くアクセスする |
@@ -32,7 +32,7 @@
 
 たくさんのファイルに囲まれた日々を、少し分かりやすく、少し心地よく。
 
-**Kiseki Storage** は、Windowsのストレージ状況を一つの画面にまとめる小さなダッシュボードです。やわらかな暖色系のデザインと、用途別のアイコンで、普段使うドライブの場所と空き容量を見渡せます。
+**Kiseki Storage** は、Windowsのストレージ状況を一つの画面にまとめる小さなダッシュボードです。やわらかな暖色系のデザインとZen Maru Gothicの文字、用途別のアイコンで、普段使うドライブの場所と空き容量を見渡せます。
 
 ## できること
 
@@ -42,6 +42,7 @@
 - **パソコンの概要** — Windows情報、CPU、RAM、ストレージ合計などを確認できます。
 - **クイックアクセス** — RAMDisk、SSDCache、OneDrive、Google Drive、C2SDriveへアクセスできます。
 - **自動更新** — RAMは約10秒ごと、ディスク容量は約30秒ごとに表示を更新します。
+- **見やすい日本語** — Zen Maru Gothicをアプリに内蔵しており、フォントの追加インストールは不要です。
 
 ## ご利用環境
 
@@ -71,7 +72,7 @@
 
 このプロジェクトの権利者がライセンスを付与できる部分について、**CC BY-NC-ND 4.0 International** を適用します。出典表示を条件とする非営利での再配布を認める一方、改変物の共有は認めません。詳しくは [LICENSE](LICENSE) と [権利に関するお知らせ](NOTICE.md) をご確認ください。
 
-**アバター、アイコン、クラウドサービスのロゴ等の画像素材は、一律にCCライセンスの対象とは扱いません。** 公開・再配布前に素材ごとの権利確認が必要です。ロゴの権利は各権利者に帰属します。
+**アバター、アイコン、クラウドサービスのロゴ等の画像素材は、一律にCCライセンスの対象とは扱いません。** 公開・再配布前に素材ごとの権利確認が必要です。ロゴの権利は各権利者に帰属します。**Zen Maru Gothicフォント**には別途SIL Open Font License 1.1が適用されます（[OFL全文](assets/fonts/OFL.txt)）。
 
 ## お知らせ
 

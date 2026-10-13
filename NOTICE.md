@@ -11,6 +11,16 @@
 
 このライセンスは、適切な表示を伴う非営利での複製・共有を許可しますが、改変物の共有を許可しません。非営利の範囲には個別の判断が必要です。正式な条件はLICENSEを参照してください。
 
+## 同梱フォントのライセンス
+
+本リポジトリは **Zen Maru Gothic Regular / Bold** のTTFを `assets/fonts/` に同梱しています。
+
+- Copyright 2021 The Zen Maru Gothic Project Authors
+- フォントのライセンス：**SIL Open Font License, Version 1.1**
+- 原文：[`assets/fonts/OFL.txt`](assets/fonts/OFL.txt)
+- これらのフォントは**CC BY-NC-ND 4.0には含まれません**。SIL OFL 1.1の条件が優先されます。
+- フォントはアップロードされたオリジナルZIPにあるものをそのまま同梱しています（変更・サブセット化なし）。
+
 ## 画像素材について
 
 `assets/` に含まれる人物アバター、用途別ICO、およびOneDrive・Google Driveなどのサービスロゴについて、**素材ごとの著作権者と再配布許諾が本リポジトリの資料だけからは確認できていません**。現段階では、CCライセンスが付与されたものとして扱わないでください。

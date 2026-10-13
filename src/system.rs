@@ -74,7 +74,7 @@ pub enum Update {
 pub fn start_monitor() -> Receiver<Update> {
     let (tx, rx) = mpsc::channel();
     thread::spawn(move || {
-        let mut sys = System::new_all();
+        let mut sys = System::new();
         let mut next_ram = Instant::now();
         let mut next_disk = Instant::now();
         loop {
@@ -102,10 +102,12 @@ pub fn start_monitor() -> Receiver<Update> {
 fn list_partitions() -> Vec<Partition> {
     let mut out = Vec::new();
     let mask = unsafe { GetLogicalDrives() };
+    // GetLogicalDrives() の0はAPI失敗。存在しない全ドライブを照会しない。
+    if mask == 0 { return out; }
     for byte in b'C'..=b'M' {
         let letter = byte as char;
         let index = letter as u32 - 'A' as u32;
-        if mask != 0 && (mask & (1u32 << index)) == 0 { continue; }
+        if (mask & (1u32 << index)) == 0 { continue; }
         let root: Vec<u16> = format!("{}:\\", letter).encode_utf16().chain(std::iter::once(0)).collect();
         let kind = unsafe { GetDriveTypeW(root.as_ptr()) };
         if !matches!(kind, DRIVE_REMOVABLE | DRIVE_FIXED | DRIVE_REMOTE | DRIVE_RAMDISK) { continue; }
@@ -121,11 +123,10 @@ fn list_partitions() -> Vec<Partition> {
         };
         let label = if got_label { from_wide(&volume_buf) } else { String::new() };
         let fs = if got_label { from_wide(&fs_buf) } else { String::new() };
-        let mut available = 0u64;
         let mut total = 0u64;
         let mut free_total = 0u64;
         let ok = unsafe {
-            GetDiskFreeSpaceExW(root.as_ptr(), &mut available, &mut total, &mut free_total) != 0
+            GetDiskFreeSpaceExW(root.as_ptr(), ptr::null_mut(), &mut total, &mut free_total) != 0
         };
         // 使用量を「現在のユーザーに利用できる容量」ではなく物理使用量として算出。
         // これにより管理者予約・クォータによる見かけ上の消費増を避ける。
