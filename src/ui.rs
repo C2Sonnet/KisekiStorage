@@ -74,8 +74,17 @@ impl ImageSet {
 }
 
 fn load_texture(ctx: &egui::Context, name: &str, data: &[u8]) -> TextureHandle {
-    let img = image::load_from_memory(data).unwrap_or_else(|_| {
-        image::DynamicImage::new_rgba8(2, 2)
+    // 破損・未対応形式で読み込めなかった場合は、空白ではなく異常を示すアイコンを表示。
+    // 新しい13種類のパーティション画像は、ICOから事前に検証済みPNGへ変換して同梱する。
+    let img = image::load_from_memory(data).unwrap_or_else(|error| {
+        eprintln!("Kiseki Storage: アイコン {name} の読み込みに失敗: {error}");
+        let fallback = image::RgbaImage::from_fn(64, 64, |x, y| {
+            let diagonal = ((x as i32 - y as i32).abs() < 4 || (x as i32 + y as i32 - 63).abs() < 4)
+                && (15..49).contains(&x) && (15..49).contains(&y);
+            if diagonal { image::Rgba([177, 96, 82, 255]) }
+            else { image::Rgba([251, 233, 226, 255]) }
+        });
+        image::DynamicImage::ImageRgba8(fallback)
     });
     // 元画像の透過は維持し、角部分だけを円形マスクで徐々に透明化する。
     let mut rgba = img.to_rgba8();

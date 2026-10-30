@@ -132,4 +132,15 @@ mod tests {
         assert_eq!(CATEGORIES.len(), 13);
         assert!(CATEGORIES.iter().all(|c| !c.icon.is_empty() && c.tags.len() <= 5));
     }
+
+    #[test]
+    fn all_embedded_partition_icons_decode_as_png() {
+        // 画像のファイル容量だけでなく、PNG本体のデコードまで検査する。
+        // 過去の「仕事.png」途中切れによる空白表示の再発防止。
+        for category in CATEGORIES {
+            let image = image::load_from_memory_with_format(category.icon, image::ImageFormat::Png)
+                .unwrap_or_else(|error| panic!("{} のアイコンが破損しています: {error}", category.name));
+            assert_eq!((image.width(), image.height()), (256, 256), "{}", category.name);
+        }
+    }
 }
