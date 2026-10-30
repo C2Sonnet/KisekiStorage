@@ -10,7 +10,7 @@
 
 **あなたのストレージを、ひと目で。**
 
-[![Version](https://img.shields.io/badge/Version-v1.2.0-DA947E)](#製品情報) [![Platform](https://img.shields.io/badge/Platform-Windows%2010%20%2F%2011-7D9B9A)](#ご利用環境) [![License](https://img.shields.io/badge/License-CC%20BY--NC--ND%204.0-BB8A72)](LICENSE)
+[![Version](https://img.shields.io/badge/Version-v1.2.1-DA947E)](#製品情報) [![Platform](https://img.shields.io/badge/Platform-Windows%2010%20%2F%2011-7D9B9A)](#ご利用環境) [![License](https://img.shields.io/badge/License-CC%20BY--NC--ND%204.0-BB8A72)](LICENSE)
 
 </div>
 
@@ -22,7 +22,7 @@
 |:--|:--|
 | **製品名** | Kiseki Storage |
 | **日本語名** | キセキの倉庫 |
-| **バージョン** | v1.2.0 |
+| **バージョン** | v1.2.1 |
 | **提供形態** | Windows向けデスクトップアプリケーション |
 | **デザイン／プロジェクト** | Chiaroscuro Sonnet（@C2Sonnet） |
 | **主な用途** | パソコン内のストレージを見渡し、目的のドライブへ素早くアクセスする |

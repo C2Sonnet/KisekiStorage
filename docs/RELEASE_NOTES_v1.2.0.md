@@ -1,4 +1,4 @@
-# Kiseki Storage v1.2.0 — Release Notes
+# Kiseki Storage v1.2.1 — Release Notes
 
 **キセキの倉庫** のパーティション分類と操作性を改善したバージョンです。
 

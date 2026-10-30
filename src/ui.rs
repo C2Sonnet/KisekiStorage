@@ -272,16 +272,18 @@ impl Dashboard {
         draw_brand_avatar(&p, &self.images.sun, sun_center, true, hover);
         draw_brand_avatar(&p, &self.images.moon, moon_center, false, hover);
         let x = rect.left() + 288.0;
-        let base = rect.top() + 33.0;
+        let title_y = rect.top() + 28.0;
+        let subtitle_y = title_y + 50.0;
+        let tagline_y = subtitle_y + 38.0;
         let name_color = if hover { Color32::from_rgb(186, 82, 61) } else { BLUE };
         let secondary = if hover { BLUE } else { INK };
-        p.text(egui::pos2(x, base), Align2::LEFT_CENTER, "光と影のソネット",
+        p.text(egui::pos2(x, title_y), Align2::LEFT_CENTER, "光と影のソネット",
             bold_font(28.0), name_color);
-        p.text(egui::pos2(x + 246.0, base + 1.0), Align2::LEFT_CENTER, "(@C2Sonnet)",
+        p.text(egui::pos2(x + 246.0, title_y + 1.0), Align2::LEFT_CENTER, "(@C2Sonnet)",
             FontId::proportional(16.0), if hover { BLUE } else { LILAC });
-        p.text(egui::pos2(x, base + 40.0), Align2::LEFT_CENTER,
+        p.text(egui::pos2(x, subtitle_y), Align2::LEFT_CENTER,
             "Chiaroscuro Sonnet", FontId::proportional(20.0), secondary);
-        p.text(egui::pos2(x, base + 72.0), Align2::LEFT_CENTER,
+        p.text(egui::pos2(x, tagline_y), Align2::LEFT_CENTER,
             "導くひかりと寄り添えカゲ", FontId::proportional(16.5),
             if hover { BLUE } else { MUTED });
         let clicked = response.clicked();
@@ -381,8 +383,12 @@ impl Dashboard {
         let card_w = ((space - (count - 1) as f32 * gap) / count as f32).max(0.0);
         let mut selected_drive = None;
         // ドライブ文字をグループ判定に使わない。ボリューム名で分類し、グループ順に表示。
-        for group in categories::GROUPS {
-            let group_items: Vec<&Partition> = self.partitions.iter()
+        let visible_partitions: Vec<&Partition> = self.partitions.iter()
+            .filter(|part| !matches!(part.letter, 'A' | 'B'))
+            .filter(|part| categories::identify(&part.label).is_some())
+            .collect();
+        for group in categories::GROUPS.iter().filter(|g| **g != "未分類") {
+            let group_items: Vec<&Partition> = visible_partitions.iter().copied()
                 .filter(|part| categories::group_for(&part.label) == *group).collect();
             if group_items.is_empty() { continue; }
             ui.add_space(8.0);
@@ -569,15 +575,15 @@ fn partition_tags(category: Option<&Category>) -> &'static [&'static str] {
 fn card_height(ui: &Ui, part: &Partition, category: Option<&Category>, width: f32) -> f32 {
     let text_w = (width - 154.0).max(20.0);
     let desc = partition_description(part, category);
-    let lines = wrap_lines(ui.painter(), desc, &FontId::proportional(12.8), MUTED, text_w, 4);
+    let lines = wrap_lines(ui.painter(), desc, &FontId::proportional(12.4), MUTED, text_w, 4);
     let mut rows = 1;
     let mut filled = 0.0_f32;
     for tag in partition_tags(category).iter().take(5) {
-        let tw = ui.painter().layout_no_wrap((*tag).to_owned(), FontId::proportional(12.0), BLUE).size().x + 16.0;
+        let tw = ui.painter().layout_no_wrap((*tag).to_owned(), FontId::proportional(11.8), BLUE).size().x + 15.0;
         if filled > 0.0 && filled + tw > text_w { rows += 1; filled = 0.0; }
         filled += tw + 6.0;
     }
-    (147.0 + lines.len() as f32 * 18.0 + (rows - 1) as f32 * 22.0).max(210.0)
+    (135.0 + lines.len() as f32 * 17.0 + (rows - 1) as f32 * 20.0).max(188.0)
 }
 
 fn draw_shadow_text(p: &egui::Painter, pos: Pos2, anchor: Align2, text: String, font: FontId, color: Color32) {
@@ -650,22 +656,22 @@ fn draw_partition_card(ui: &mut Ui, part: &Partition, category: Option<&Category
             FontId::proportional(12.0), Color32::from_rgb(111, 94, 89));
     }
     let desc = partition_description(part, category);
-    let desc_font = FontId::proportional(12.8);
+    let desc_font = FontId::proportional(12.4);
     let lines = wrap_lines(&inner, desc, &desc_font, MUTED, text_w, 4);
-    let desc_top = rect.top() + 111.0;
+    let desc_top = rect.top() + 106.0;
     for (i, line) in lines.iter().enumerate() {
-        inner.text(egui::pos2(x, desc_top + i as f32 * 18.0), Align2::LEFT_CENTER,
+        inner.text(egui::pos2(x, desc_top + i as f32 * 17.0), Align2::LEFT_CENTER,
             line, desc_font.clone(), MUTED);
     }
     let mut tag_x = x;
-    let mut tag_y = desc_top + lines.len() as f32 * 18.0 + 5.0;
-    let tag_font = FontId::proportional(12.0);
+    let mut tag_y = desc_top + lines.len() as f32 * 17.0 + 3.0;
+    let tag_font = FontId::proportional(11.8);
     for tag in partition_tags(category).iter().take(5) {
         let tw = inner.layout_no_wrap((*tag).to_owned(), tag_font.clone(), BLUE).size().x + 16.0;
-        if tag_x > x && tag_x + tw > right { tag_x = x; tag_y += 22.0; }
-        if tag_y + 20.0 > rect.bottom() - 9.0 { break; }
-        let pill = Rect::from_min_size(egui::pos2(tag_x, tag_y), egui::vec2(tw.min(text_w), 20.0));
-        inner.rect_filled(pill, 10.0, Color32::from_rgb(250, 234, 223));
+        if tag_x > x && tag_x + tw > right { tag_x = x; tag_y += 20.0; }
+        if tag_y + 18.0 > rect.bottom() - 4.0 { break; }
+        let pill = Rect::from_min_size(egui::pos2(tag_x, tag_y), egui::vec2(tw.min(text_w), 18.0));
+        inner.rect_filled(pill, 9.0, Color32::from_rgb(250, 234, 223));
         inner.text(pill.center(), Align2::CENTER_CENTER, *tag, tag_font.clone(), BLUE);
         tag_x += tw + 6.0;
     }
