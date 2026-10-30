@@ -12,7 +12,7 @@
 - [ ] ビルド後の`Cargo.lock`を追加して依存関係を固定した
 - [ ] Windows 10/11で `cargo build --release` と `cargo test` を確認した
 - [ ] `cargo clippy --all-targets -- -D warnings`を実行し、警告を確認した
-- [ ] v1.1.0で導入したZen Maru Gothicが日本語・英語ともに正しく表示されることを確認した
+- [ ] v1.2.0で導入したZen Maru Gothicが日本語・英語ともに正しく表示されることを確認した
 - [ ] フォントOFL全文が配布物に含まれることを確認した
 - [ ] セキュリティレビュー（docs/SECURITY_REVIEW.md）に残る確認事項を見直した
 - [ ] パーティション表示、ワンクリック、管理者権限、ボタン動作を実機検証した

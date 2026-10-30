@@ -10,6 +10,36 @@ const MINT: Color32 = Color32::from_rgb(59, 145, 119);
 const LILAC: Color32 = Color32::from_rgb(148, 113, 145);
 const W: Color32 = Color32::WHITE;
 
+const SOCIAL_LINKS: &[(&str, &str, &str)] = &[
+    ("github", "GitHub", "https://github.com/C2Sonnet"),
+    ("x", "X", "https://x.com/C2Sonnet"),
+    ("note", "note", "https://note.com/c2sonnet"),
+    ("instagram", "Instagram", "https://www.instagram.com/c2sonnet"),
+    ("threads", "Threads", "https://www.threads.com/@c2sonnet"),
+    ("tiktok", "TikTok", "https://www.tiktok.com/@c2sonnet"),
+    ("youtube", "YouTube", "https://www.youtube.com/@C2Sonnet"),
+    ("niconico", "ニコニコ動画", "https://www.nicovideo.jp/user/145287241"),
+    ("pixiv", "pixiv", "https://www.pixiv.net/users/129080116"),
+    ("pinterest", "Pinterest", "https://www.pinterest.com/c2sonnet"),
+];
+
+fn social_icon_bytes(name: &str) -> &'static [u8] {
+    match name {
+        "github" => include_bytes!("../assets/social/github.png"),
+        "x" => include_bytes!("../assets/social/x.png"),
+        "note" => include_bytes!("../assets/social/note.png"),
+        "instagram" => include_bytes!("../assets/social/instagram.png"),
+        "threads" => include_bytes!("../assets/social/threads.png"),
+        "tiktok" => include_bytes!("../assets/social/tiktok.png"),
+        "youtube" => include_bytes!("../assets/social/youtube.png"),
+        "niconico" => include_bytes!("../assets/social/niconico.png"),
+        "pixiv" => include_bytes!("../assets/social/pixiv.png"),
+        "pinterest" => include_bytes!("../assets/social/pinterest.png"),
+        _ => &[],
+    }
+}
+
+
 struct ImageSet {
     sun: TextureHandle,
     moon: TextureHandle,
@@ -17,6 +47,7 @@ struct ImageSet {
     google: TextureHandle,
     c2s: TextureHandle,
     partitions: HashMap<&'static str, TextureHandle>,
+    socials: HashMap<&'static str, TextureHandle>,
 }
 
 impl ImageSet {
@@ -25,6 +56,11 @@ impl ImageSet {
         for cat in CATEGORIES {
             partitions.insert(cat.name, load_texture(ctx, cat.name, cat.icon));
         }
+        let mut socials = HashMap::new();
+        for (name, _, _) in SOCIAL_LINKS {
+            let bytes = social_icon_bytes(name);
+            socials.insert(*name, load_texture(ctx, &format!("social-{name}"), bytes));
+        }
         let a = load_texture(ctx, "top-avatar-1", include_bytes!("../assets/avatar_sun.png"));
         let b = load_texture(ctx, "top-avatar-2", include_bytes!("../assets/avatar_moon.png"));
         Self {
@@ -32,7 +68,7 @@ impl ImageSet {
             one: load_texture(ctx, "onedrive", include_bytes!("../assets/onedrive.png")),
             google: load_texture(ctx, "google-drive", include_bytes!("../assets/google_drive.png")),
             c2s: load_texture(ctx, "c2sdrive", include_bytes!("../assets/c2sdrive.png")),
-            partitions,
+            partitions, socials,
         }
     }
 }
@@ -92,6 +128,7 @@ fn bold_font(size: f32) -> FontId {
 enum OpenTarget {
     Drive(char),
     Quick(u8),
+    Url(&'static str),
 }
 
 pub struct Dashboard {
@@ -178,10 +215,12 @@ impl Dashboard {
                     open_directory_in_explorer(&drive)
                 }
                 OpenTarget::Quick(id) => open_action(id),
+                OpenTarget::Url(url) => webbrowser::open(url)
+                    .map_err(|e| format!("ブラウザを開けません: {e}")),
             };
             let message = match (target, result) {
                 (OpenTarget::Drive(letter), Ok(())) => format!("{}: のエクスプローラーを起動しました", letter),
-                (OpenTarget::Quick(_), Ok(())) => "起動要求を送信しました".to_owned(),
+                (OpenTarget::Quick(_) | OpenTarget::Url(_), Ok(())) => "起動要求を送信しました".to_owned(),
                 (_, Err(message)) => message,
             };
             let _ = sender.send(message);
@@ -191,7 +230,7 @@ impl Dashboard {
         }
     }
 
-    fn header(&self, ui: &mut Ui) {
+    fn header(&mut self, ui: &mut Ui) {
         // 1400px基準。SYSTEM OVERVIEWは右端に余白を確保したまま配置。
         let available = ui.available_width();
         let right_padding = 24.0;
@@ -222,34 +261,61 @@ impl Dashboard {
         }
     }
 
-    fn brand(&self, ui: &mut Ui) {
-        ui.add_space(12.0);
+    fn brand(&mut self, ui: &mut Ui) {
+        ui.add_space(8.0);
+        let width = ui.available_width().max(0.0);
+        let (rect, response) = ui.allocate_exact_size(egui::vec2(width, 153.0), Sense::click());
+        let hover = response.hovered();
+        let p = ui.painter_at(rect);
+        let sun_center = egui::pos2(rect.left() + 64.0, rect.top() + 88.0);
+        let moon_center = egui::pos2(rect.left() + 194.0, rect.top() + 88.0);
+        draw_brand_avatar(&p, &self.images.sun, sun_center, true, hover);
+        draw_brand_avatar(&p, &self.images.moon, moon_center, false, hover);
+        let x = rect.left() + 288.0;
+        let base = rect.top() + 33.0;
+        let name_color = if hover { Color32::from_rgb(186, 82, 61) } else { BLUE };
+        let secondary = if hover { BLUE } else { INK };
+        p.text(egui::pos2(x, base), Align2::LEFT_CENTER, "光と影のソネット",
+            bold_font(28.0), name_color);
+        p.text(egui::pos2(x + 246.0, base + 1.0), Align2::LEFT_CENTER, "(@C2Sonnet)",
+            FontId::proportional(16.0), if hover { BLUE } else { LILAC });
+        p.text(egui::pos2(x, base + 40.0), Align2::LEFT_CENTER,
+            "Chiaroscuro Sonnet", FontId::proportional(20.0), secondary);
+        p.text(egui::pos2(x, base + 72.0), Align2::LEFT_CENTER,
+            "導くひかりと寄り添えカゲ", FontId::proportional(16.5),
+            if hover { BLUE } else { MUTED });
+        let clicked = response.clicked();
+        response.on_hover_cursor(egui::CursorIcon::PointingHand)
+            .on_hover_text("光と影のソネットのホームページを開く");
+        if clicked { self.queue_open(OpenTarget::Url("https://im.c2s.me")); }
+
+        // ラベルなし、hover時発光、クリックで個別SNSへ移動する10個の丸型アイコン。
+        ui.add_space(4.0);
+        let mut selected = None;
         ui.horizontal(|ui| {
-            draw_avatar(ui, &self.images.sun, true);
-            ui.add_space(10.0);
-            draw_avatar(ui, &self.images.moon, false);
-            ui.add_space(33.0); // 文字グループ全体を右へ20px移動
-            ui.vertical(|ui| {
-                ui.add_space(11.0);
-                ui.horizontal(|ui| {
-                    ui.label(RichText::new("光と影のソネット").color(BLUE).size(30.0).strong());
-                    ui.add_space(3.0);
-                    ui.label(RichText::new("(@C2Sonnet)").color(LILAC).size(17.0).strong());
-                });
-                ui.add_space(4.0);
-                ui.label(RichText::new("Chiaroscuro Sonnet").size(21.0).color(INK));
-                ui.label(RichText::new("導くひかりと寄り添えカゲ").size(18.0).color(MUTED));
-                ui.add_space(14.0);
-                egui::Frame::new()
-                    .fill(Color32::from_rgba_unmultiplied(255, 252, 246, 216))
-                    .corner_radius(20)
-                    .inner_margin(egui::Margin::symmetric(12, 5))
-                    .show(ui, |ui| {
-                        ui.label(RichText::new("☀  YOUR STORAGE, AT A GLANCE  ☾")
-                            .size(14.0).color(MINT).strong());
-                    });
-            });
+            ui.spacing_mut().item_spacing.x = 7.0;
+            ui.add_space(5.0);
+            for (name, description, url) in SOCIAL_LINKS {
+                if let Some(icon) = self.images.socials.get(name) {
+                    let (r, response) = ui.allocate_exact_size(egui::vec2(36.0, 36.0), Sense::click());
+                    let hov = response.hovered();
+                    let center = r.center();
+                    let paint = ui.painter_at(r);
+                    if hov {
+                        paint.circle_filled(center, 18.0, Color32::from_rgba_unmultiplied(244, 166, 116, 72));
+                        paint.circle_filled(center, 16.0, Color32::from_rgba_unmultiplied(255, 217, 180, 138));
+                    }
+                    paint.circle_filled(center, 15.0, if hov { Color32::WHITE } else { Color32::from_rgb(255, 249, 242) });
+                    let size = if hov { 25.0 } else { 23.0 };
+                    paint.image(icon.id(), Rect::from_center_size(center, egui::vec2(size, size)),
+                        Rect::from_min_max(Pos2::ZERO, egui::pos2(1.0, 1.0)), W);
+                    let clicked = response.clicked();
+                    response.on_hover_cursor(egui::CursorIcon::PointingHand).on_hover_text(*description);
+                    if clicked { selected = Some(*url); }
+                }
+            }
         });
+        if let Some(url) = selected { self.queue_open(OpenTarget::Url(url)); }
     }
 
     fn information(&self, ui: &mut Ui) {
@@ -262,9 +328,9 @@ impl Dashboard {
             .show(ui, |ui| {
                 ui.set_width(width - 24.0);
                 ui.horizontal(|ui| {
-                    ui.label(RichText::new("SYSTEM OVERVIEW").color(BLUE).size(12.0).strong());
+                    ui.label(RichText::new("SYSTEM OVERVIEW").color(BLUE).size(13.0).strong());
                     ui.with_layout(egui::Layout::right_to_left(Align::Center), |ui| {
-                        ui.label(RichText::new("● LIVE").color(MINT).size(10.0).strong());
+                        ui.label(RichText::new("● LIVE").color(MINT).size(11.3).strong());
                     });
                 });
                 ui.add_space(4.0);
@@ -286,58 +352,61 @@ impl Dashboard {
 
     fn cards(&mut self, ui: &mut Ui) {
         ui.horizontal(|ui| {
-            ui.label(RichText::new("パーティション一覧").font(bold_font(19.5)).color(INK));
-            ui.add_space(7.0);
+            ui.label(RichText::new("パーティション一覧").font(bold_font(20.0)).color(INK));
+            ui.add_space(8.0);
             egui::Frame::new().fill(Color32::from_rgb(251, 231, 213))
-                .corner_radius(30).inner_margin(egui::Margin::symmetric(12, 5))
-                .show(ui, |ui| { ui.label(RichText::new("C: – M:").size(12.0).color(BLUE)); });
+                .corner_radius(30).inner_margin(egui::Margin::symmetric(12, 4))
+                .show(ui, |ui| { ui.label(RichText::new("C: – Z:").size(12.0).color(BLUE)); });
             ui.with_layout(egui::Layout::right_to_left(Align::Center), |ui| {
-                ui.label(RichText::new("容量情報 30秒ごとに更新").size(10.5).color(MUTED));
+                ui.label(RichText::new("容量情報 30秒ごとに更新").size(11.0).color(MUTED));
             });
         });
-        ui.add_space(11.0);
+        ui.add_space(12.0);
         if self.loading {
-            ui.add_space(35.0);
             ui.vertical_centered(|ui| { ui.spinner(); ui.label("パーティションを読み込み中…"); });
-            ui.add_space(75.0);
             return;
         }
         if self.partitions.is_empty() {
-            ui.add_space(30.0);
             ui.vertical_centered(|ui| {
                 let message = if self.monitor_error {
                     "ドライブ監視処理が終了しました。アプリを再起動してください。"
-                } else { "C: ～ M: に対象ドライブが見つかりませんでした。" };
+                } else { "対象ドライブが見つかりませんでした。" };
                 ui.label(RichText::new(message).color(MUTED));
             });
-            ui.add_space(60.0);
             return;
         }
-
-        // 1400px時は3列。横に溢れないよう、狭いときは2列/1列へ切替。
         let space = ui.available_width();
         let count: usize = if space >= 1130.0 { 3 } else if space >= 750.0 { 2 } else { 1 };
-        // eguiのhorizontalは item_spacing が自動挿入されるため、その幅だけ差し引く。
         let gap = 13.0;
         let card_w = ((space - (count - 1) as f32 * gap) / count as f32).max(0.0);
         let mut selected_drive = None;
-        for group in self.partitions.chunks(count) {
-            // 行の高さは説明の折返し・タグの段数から計算し、余白を最小限にする。
-            let row_height = group.iter().map(|part| {
-                let category = categories::identify(&part.label);
-                card_height(ui, part, category, card_w)
-            }).fold(0.0_f32, f32::max);
+        // ドライブ文字をグループ判定に使わない。ボリューム名で分類し、グループ順に表示。
+        for group in categories::GROUPS {
+            let group_items: Vec<&Partition> = self.partitions.iter()
+                .filter(|part| categories::group_for(&part.label) == *group).collect();
+            if group_items.is_empty() { continue; }
+            ui.add_space(8.0);
             ui.horizontal(|ui| {
-                ui.spacing_mut().item_spacing.x = gap;
-                for part in group {
-                    let category = categories::identify(&part.label);
-                    let texture = category.and_then(|c| self.images.partitions.get(c.name));
-                    if draw_partition_card(ui, part, category, texture, card_w, row_height) {
-                        selected_drive = Some(part.letter);
-                    }
-                }
+                ui.label(RichText::new(*group).font(bold_font(16.5)).color(BLUE));
+                ui.label(RichText::new(format!("{} ドライブ", group_items.len())).size(11.0).color(MUTED));
             });
-            ui.add_space(5.0);
+            ui.add_space(8.0);
+            for row in group_items.chunks(count) {
+                let height = row.iter().map(|part| {
+                    card_height(ui, part, categories::identify(&part.label), card_w)
+                }).fold(0.0_f32, f32::max);
+                ui.horizontal(|ui| {
+                    ui.spacing_mut().item_spacing.x = gap;
+                    for part in row {
+                        let category = categories::identify(&part.label);
+                        let icon = category.and_then(|c| self.images.partitions.get(c.name));
+                        if draw_partition_card(ui, part, category, icon, card_w, height) {
+                            selected_drive = Some(part.letter);
+                        }
+                    }
+                });
+                ui.add_space(5.0);
+            }
         }
         if let Some(letter) = selected_drive { self.queue_open(OpenTarget::Drive(letter)); }
     }
@@ -395,7 +464,7 @@ impl eframe::App for Dashboard {
         // 固定の上部ヘッダー。ScrollAreaには含めず、境界の線は描かない。
         egui::TopBottomPanel::top("fixed_system_overview")
             .resizable(false)
-            .exact_height(260.0)
+            .exact_height(250.0)
             .frame(egui::Frame::new()
                 .fill(Color32::from_rgb(255, 249, 241))
                 .stroke(Stroke::NONE)
@@ -408,7 +477,7 @@ impl eframe::App for Dashboard {
         // 固定のクイックアクセス。すべてのボタンが常に同じ行に残る。
         egui::TopBottomPanel::bottom("fixed_quick_access")
             .resizable(false)
-            .exact_height(158.0)
+            .exact_height(143.0)
             .frame(egui::Frame::new()
                 .fill(Color32::from_rgb(255, 249, 243))
                 .stroke(Stroke::NONE)
@@ -443,22 +512,24 @@ impl eframe::App for Dashboard {
 
 fn info_line(ui: &mut Ui, label: &str, value: &str) {
     ui.horizontal(|ui| {
-        ui.add_sized([104.0, 15.0], egui::Label::new(RichText::new(label).color(MUTED).size(10.5).strong()));
-        ui.add(egui::Label::new(RichText::new(value).color(INK).size(11.5)).truncate())
+        ui.add_sized([111.0, 18.0], egui::Label::new(RichText::new(label).color(MUTED).size(11.7).strong()));
+        ui.add(egui::Label::new(RichText::new(value).color(INK).size(12.6)).truncate())
             .on_hover_text(value);
     });
 }
 
-fn draw_avatar(ui: &mut Ui, texture: &TextureHandle, sun: bool) {
-    // 旧版の74px portraitのちょうど1.6倍。サン/月のマークも追随。
-    let (rect, _) = ui.allocate_exact_size(egui::vec2(120.0, 146.0), Sense::hover());
-    let portrait = Rect::from_center_size(rect.center() + egui::vec2(0.0, 12.0), egui::vec2(118.4, 118.4));
-    let p = ui.painter();
-    p.circle_filled(portrait.center(), 60.0, Color32::from_rgba_unmultiplied(255, 255, 255, 180));
-    p.image(texture.id(), portrait, Rect::from_min_max(Pos2::ZERO, egui::pos2(1.0, 1.0)), W);
-    p.circle_stroke(portrait.center(), 59.2, Stroke::new(1.8_f32, Color32::from_rgb(235, 204, 185)));
-    let badge = rect.center_top() + egui::vec2(0.0, 7.0);
-    p.circle_filled(badge, 17.0, Color32::from_rgb(255, 251, 243));
+fn draw_brand_avatar(p: &egui::Painter, texture: &TextureHandle, center: Pos2, sun: bool, hovered: bool) {
+    if hovered {
+        for (radius, alpha) in [(75.0, 10), (69.0, 22), (63.0, 45)] {
+            p.circle_filled(center, radius, Color32::from_rgba_unmultiplied(251, 163, 104, alpha));
+        }
+    }
+    p.circle_filled(center, 60.0, Color32::from_rgba_unmultiplied(255, 255, 255, 180));
+    p.image(texture.id(), Rect::from_center_size(center, egui::vec2(118.4, 118.4)),
+        Rect::from_min_max(Pos2::ZERO, egui::pos2(1.0, 1.0)), W);
+    p.circle_stroke(center, 59.2, Stroke::new(1.8_f32, Color32::from_rgb(235, 204, 185)));
+    let badge = center - egui::vec2(0.0, 75.0);
+    p.circle_filled(badge, 14.5, Color32::from_rgb(255, 251, 243));
     if sun { draw_sun(p, badge); } else { draw_moon(p, badge); }
 }
 
@@ -499,129 +570,108 @@ fn card_height(ui: &Ui, part: &Partition, category: Option<&Category>, width: f3
     let text_w = (width - 154.0).max(20.0);
     let desc = partition_description(part, category);
     let lines = wrap_lines(ui.painter(), desc, &FontId::proportional(12.8), MUTED, text_w, 4);
-    let tags = partition_tags(category);
     let mut rows = 1;
     let mut filled = 0.0_f32;
-    for tag in tags.iter().take(5) {
+    for tag in partition_tags(category).iter().take(5) {
         let tw = ui.painter().layout_no_wrap((*tag).to_owned(), FontId::proportional(12.0), BLUE).size().x + 16.0;
-        if filled > 0.0 && filled + tw > text_w {
-            rows += 1;
-            filled = 0.0;
-        }
+        if filled > 0.0 && filled + tw > text_w { rows += 1; filled = 0.0; }
         filled += tw + 6.0;
     }
-    (140.0 + lines.len() as f32 * 18.0 + (rows - 1) as f32 * 22.0).max(205.0)
+    (147.0 + lines.len() as f32 * 18.0 + (rows - 1) as f32 * 22.0).max(210.0)
 }
 
-fn draw_shadow_text(p: &egui::Painter, pos: Pos2, anchor: Align2, text: impl Into<String>, font: FontId, color: Color32) {
-    let text = text.into();
-    p.text(pos + egui::vec2(1.0, 1.0), anchor, text.clone(), font.clone(), Color32::from_rgba_unmultiplied(255, 255, 255, 170));
+fn draw_shadow_text(p: &egui::Painter, pos: Pos2, anchor: Align2, text: String, font: FontId, color: Color32) {
+    p.text(pos + egui::vec2(0.8, 1.0), anchor, text.clone(), font.clone(),
+        Color32::from_rgba_unmultiplied(255, 255, 255, 200));
     p.text(pos, anchor, text, font, color);
 }
 
-/// 文字・タグの描画はカードの明示的な矩形内に収める。
-/// 戻り値: カードをシングルクリックしたかどうか。
 fn draw_partition_card(ui: &mut Ui, part: &Partition, category: Option<&Category>, texture: Option<&TextureHandle>, width: f32, height: f32) -> bool {
     let (rect, response) = ui.allocate_exact_size(egui::vec2(width, height), Sense::click());
     let hovered = response.hovered();
-    let painter = ui.painter_at(rect);
-    let inner = painter.with_clip_rect(rect);
-    let fill = if hovered { Color32::from_rgb(255, 247, 239) } else { Color32::from_rgb(255, 253, 250) };
-    inner.rect_filled(rect, 20.0, fill);
-    inner.rect_stroke(rect, 20.0,
-        Stroke::new(if hovered { 1.8_f32 } else { 1.0_f32 },
-            if hovered { Color32::from_rgb(205, 144, 121) } else { Color32::from_rgb(237, 220, 208) }),
-        StrokeKind::Inside);
-
-    let icon_center = egui::pos2(rect.left() + 66.0, rect.center().y);
-    inner.circle_filled(icon_center, 52.0, Color32::from_rgb(255, 241, 231));
+    let p = ui.painter_at(rect);
+    let inner = p.with_clip_rect(rect);
+    inner.rect_filled(rect, 20.0, if hovered { Color32::from_rgb(255, 247, 239) } else { Color32::from_rgb(255, 253, 250) });
+    inner.rect_stroke(rect, 20.0, Stroke::new(if hovered { 1.8_f32 } else { 1.0_f32 },
+        if hovered { Color32::from_rgb(205, 144, 121) } else { Color32::from_rgb(237, 220, 208) }), StrokeKind::Inside);
+    // ホバー時の左側縦棒は描画しない。
+    let center = egui::pos2(rect.left() + 66.0, rect.center().y);
+    inner.circle_filled(center, 52.0, Color32::from_rgb(255, 241, 231));
     if let Some(texture) = texture {
-        inner.image(texture.id(), Rect::from_center_size(icon_center, egui::vec2(96.0, 96.0)),
+        inner.image(texture.id(), Rect::from_center_size(center, egui::vec2(96.0, 96.0)),
             Rect::from_min_max(Pos2::ZERO, egui::pos2(1.0, 1.0)), W);
     } else {
-        inner.text(icon_center, Align2::CENTER_CENTER, "◉", FontId::proportional(38.0), BLUE);
+        inner.text(center, Align2::CENTER_CENTER, "◉", FontId::proportional(38.0), BLUE);
     }
-
     let x = rect.left() + 132.0;
     let right = rect.right() - 8.0;
     let text_w = (right - x).max(0.0);
     let local = categories::is_local_badge(&part.label);
-    let total_text = if !part.error && part.total > 0 { system::short_capacity(part.total) } else { "--".to_owned() };
+    let total_text = if part.error || part.total == 0 { "--".to_owned() }
+        else { system::short_capacity(part.total) };
     let total_font = FontId::proportional(11.5);
-    let total_size = inner.layout_no_wrap(total_text.clone(), total_font.clone(), INK).size().x;
+    let total_width = inner.layout_no_wrap(total_text.clone(), total_font.clone(), INK).size().x;
     let title_font = bold_font(18.4);
     let title = format!("({}:) {}", part.letter, categories::display_name(&part.label));
-    let badge_w = if local { 58.0 } else { 0.0 };
-    let max_title_w = (text_w - total_size - badge_w - 18.0).max(10.0);
+    let max_title_w = (text_w - total_width - if local { 75.0 } else { 12.0 }).max(10.0);
     let short_title = fit_text(&inner, &title, &title_font, INK, max_title_w);
-    let title_rect = inner.text(egui::pos2(x, rect.top() + 28.0), Align2::LEFT_CENTER, short_title, title_font, INK);
+    let title_rect = inner.text(egui::pos2(x, rect.top() + 28.0), Align2::LEFT_CENTER,
+        short_title, title_font, INK);
     if local {
-        let badge = Rect::from_min_size(
-            egui::pos2((title_rect.right() + 6.0).min(right - total_size - 68.0), rect.top() + 16.0),
-            egui::vec2(54.0, 24.0));
+        let badge = Rect::from_min_size(egui::pos2(title_rect.right() + 5.0, rect.top() + 16.0), egui::vec2(54.0, 24.0));
         inner.rect_filled(badge, 12.0, Color32::from_rgb(220, 239, 224));
         inner.text(badge.center(), Align2::CENTER_CENTER, "Local", FontId::proportional(12.0), Color32::from_rgb(40, 110, 77));
     }
-    draw_shadow_text(&inner, egui::pos2(rect.right() - 8.0, rect.top() + 28.0), Align2::RIGHT_CENTER, total_text, total_font, INK);
-
+    draw_shadow_text(&inner, egui::pos2(right, rect.top() + 28.0), Align2::RIGHT_CENTER,
+        total_text, total_font, INK);
     if part.error || part.total == 0 {
-        inner.text(egui::pos2(x, rect.top() + 82.0), Align2::LEFT_CENTER,
-            "容量を取得できません", FontId::proportional(13.0), MUTED);
+        inner.text(egui::pos2(x, rect.top() + 77.0), Align2::LEFT_CENTER,
+            "容量を取得できません", FontId::proportional(12.8), MUTED);
     } else {
         let fraction = part.fraction().clamp(0.0, 1.0);
         let bar_color = if fraction >= 0.90 { Color32::from_rgb(190, 150, 198) }
             else if fraction >= 0.75 { Color32::from_rgb(224, 149, 151) }
             else if fraction > 0.50 { Color32::from_rgb(233, 191, 120) }
             else { Color32::from_rgb(149, 197, 199) };
-        let bar = Rect::from_min_size(egui::pos2(x, rect.top() + 58.0), egui::vec2(text_w, 28.0));
+        let bar = Rect::from_min_size(egui::pos2(x, rect.top() + 56.0), egui::vec2(text_w, 28.0));
         inner.rect_filled(bar, 14.0, Color32::from_rgb(243, 237, 230));
         if fraction > 0.0 {
-            let used_w = (bar.width() * fraction).clamp(8.0, bar.width());
-            let fill_rect = Rect::from_min_max(bar.min, egui::pos2(bar.left() + used_w, bar.bottom()));
-            let clipped = inner.with_clip_rect(bar);
-            clipped.rect_filled(fill_rect, 14.0, bar_color);
+            let filled = (bar.width() * fraction).clamp(8.0, bar.width());
+            // 塗りを必ずバー矩形の内部にクリップする。
+            let fill_rect = Rect::from_min_max(bar.min, egui::pos2(bar.left() + filled, bar.bottom()));
+            inner.with_clip_rect(bar).rect_filled(fill_rect, 14.0, bar_color);
         }
         let value_font = FontId::proportional(11.4);
-        draw_shadow_text(&inner, egui::pos2(bar.left() + 12.0, bar.center().y), Align2::LEFT_CENTER,
-            system::short_capacity(part.used()), value_font.clone(), Color32::from_rgb(72, 57, 53));
-        draw_shadow_text(&inner, egui::pos2(bar.right() - 12.0, bar.center().y), Align2::RIGHT_CENTER,
-            system::short_capacity(part.free), value_font.clone(), Color32::from_rgb(72, 57, 53));
-        inner.text(bar.center(), Align2::CENTER_CENTER,
-            format!("{:.2}%", fraction * 100.0), FontId::proportional(12.0), Color32::from_rgb(110, 95, 89));
+        draw_shadow_text(&inner, egui::pos2(bar.left() + 11.0, bar.center().y), Align2::LEFT_CENTER,
+            system::short_capacity(part.used()), value_font.clone(), INK);
+        draw_shadow_text(&inner, egui::pos2(bar.right() - 11.0, bar.center().y), Align2::RIGHT_CENTER,
+            system::short_capacity(part.free), value_font, INK);
+        inner.text(bar.center(), Align2::CENTER_CENTER, format!("{:.2}%", fraction * 100.0),
+            FontId::proportional(12.0), Color32::from_rgb(111, 94, 89));
     }
-
     let desc = partition_description(part, category);
     let desc_font = FontId::proportional(12.8);
-    let description_lines = wrap_lines(&inner, desc, &desc_font, MUTED, text_w, 4);
-    let desc_top = rect.top() + 112.0;
-    let desc_line_h = 18.0;
-    for (line_index, line) in description_lines.iter().enumerate() {
-        inner.text(egui::pos2(x, desc_top + line_index as f32 * desc_line_h),
-            Align2::LEFT_CENTER, line, desc_font.clone(), MUTED);
+    let lines = wrap_lines(&inner, desc, &desc_font, MUTED, text_w, 4);
+    let desc_top = rect.top() + 111.0;
+    for (i, line) in lines.iter().enumerate() {
+        inner.text(egui::pos2(x, desc_top + i as f32 * 18.0), Align2::LEFT_CENTER,
+            line, desc_font.clone(), MUTED);
     }
-
-    let tags = partition_tags(category);
     let mut tag_x = x;
-    let mut tag_y = desc_top + description_lines.len() as f32 * desc_line_h + 5.0;
+    let mut tag_y = desc_top + lines.len() as f32 * 18.0 + 5.0;
     let tag_font = FontId::proportional(12.0);
-    for tag in tags.iter().take(5) {
+    for tag in partition_tags(category).iter().take(5) {
         let tw = inner.layout_no_wrap((*tag).to_owned(), tag_font.clone(), BLUE).size().x + 16.0;
-        if tag_x > x && tag_x + tw > right {
-            tag_x = x;
-            tag_y += 22.0;
-        }
-        if tag_y + 20.0 > rect.bottom() - 10.0 { break; }
+        if tag_x > x && tag_x + tw > right { tag_x = x; tag_y += 22.0; }
+        if tag_y + 20.0 > rect.bottom() - 9.0 { break; }
         let pill = Rect::from_min_size(egui::pos2(tag_x, tag_y), egui::vec2(tw.min(text_w), 20.0));
         inner.rect_filled(pill, 10.0, Color32::from_rgb(250, 234, 223));
         inner.text(pill.center(), Align2::CENTER_CENTER, *tag, tag_font.clone(), BLUE);
         tag_x += tw + 6.0;
     }
-
     let clicked = response.clicked();
-    response.on_hover_text(format!("ラベル: {}
-ファイルシステム: {}
-{}
-シングルクリックでドライブを開く", part.label, part.fs, desc));
+    response.on_hover_cursor(egui::CursorIcon::PointingHand)
+        .on_hover_text(format!("ラベル: {}\nファイルシステム: {}\n{}\nクリックでドライブを開く", part.label, part.fs, desc));
     clicked
 }
 
@@ -669,7 +719,7 @@ fn wrap_lines(p: &egui::Painter, text: &str, font: &FontId, color: Color32, max_
 }
 
 fn draw_quick_button(ui: &mut Ui, label: &str, icon: &TextureHandle, width: f32) -> bool {
-    let (rect, response) = ui.allocate_exact_size(egui::vec2(width, 82.0), Sense::click());
+    let (rect, response) = ui.allocate_exact_size(egui::vec2(width, 68.0), Sense::click());
     let hovered = response.hovered();
     let p = ui.painter_at(rect);
     p.rect_filled(rect, 17.0, if hovered { Color32::from_rgb(255, 251, 246) } else { Color32::WHITE });
@@ -678,7 +728,7 @@ fn draw_quick_button(ui: &mut Ui, label: &str, icon: &TextureHandle, width: f32)
             if hovered { Color32::from_rgb(208, 149, 124) } else { Color32::from_rgb(235, 215, 204) }),
         StrokeKind::Inside);
     // 旧28pxの80% = 22.4px。アイコン左端はボタン左端から正確に10px。
-    let font = FontId::proportional(22.4);
+    let font = FontId::proportional(19.0);
     let icon_size = if width < 205.0 { 35.0 } else { 46.0 };
     let icon_x = rect.left() + 10.0;
     let ico = Rect::from_min_size(

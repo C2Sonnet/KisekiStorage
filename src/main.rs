@@ -21,7 +21,7 @@ fn main() -> eframe::Result<()> {
             rgba: icon.into_raw(), width, height,
         });
     }
-    let options = eframe::NativeOptions { viewport, ..Default::default() };
+    let options = eframe::NativeOptions { viewport, centered: true, persist_window: false, ..Default::default() };
     eframe::run_native(
         &title,
         options,

@@ -97,14 +97,14 @@ pub fn start_monitor() -> Receiver<Update> {
     rx
 }
 
-/// 全論理ドライブのうちC:～M:に存在するものを毎回列挙。
+/// 全論理ドライブのうちC:～Z:に存在するものを毎回列挙。
 /// 光学ドライブはパーティションではないため除外。
 fn list_partitions() -> Vec<Partition> {
     let mut out = Vec::new();
     let mask = unsafe { GetLogicalDrives() };
     // GetLogicalDrives() の0はAPI失敗。存在しない全ドライブを照会しない。
     if mask == 0 { return out; }
-    for byte in b'C'..=b'M' {
+    for byte in b'C'..=b'Z' {
         let letter = byte as char;
         let index = letter as u32 - 'A' as u32;
         if (mask & (1u32 << index)) == 0 { continue; }
